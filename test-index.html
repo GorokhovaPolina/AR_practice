@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebAR с YouTube рикроллом</title>
+    <style>
+        body { 
+            margin: 0; 
+            font-family: Arial, sans-serif;
+            background: #1a1a1a;
+            color: white;
+            overflow: hidden;
+        }
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        #camera-video {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            background: black;
+        }
+        #ar-canvas {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+        }
+        #youtube-container {
+            position: absolute;
+            width: 320px;
+            height: 180px;
+            z-index: 20;
+            border: 2px solid red;
+            display: none;
+            pointer-events: none;
+        }
+        #youtube-player {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        #debug-info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            z-index: 1000;
+            max-width: 400px;
+        }
+        #start-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            margin: 10px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 18px;
+        }
+        button:hover {
+            background: #0056cc;
+        }
+        button:disabled {
+            background: #555;
+            cursor: not-allowed;
+        }
+        .hidden {
+            display: none !important;
+        }
+        .marker-overlay {
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            border: 3px dashed #00ff00;
+            background: rgba(0, 255, 0, 0.1);
+            z-index: 15;
+            display: none;
+        }
+        #load-status {
+            margin-top: 20px;
+            color: #888;
+        }
+    </style>
+</head>
+<body>
+    <div id="start-screen">
+        <h1>🎬 WebAR YouTube Рикролл</h1>
+        <p>Наведите камеру на маркер/QR-код</p>
+        <button id="start-button" disabled>⏳ Загрузка библиотек...</button>
+        <div id="load-status">Загружаем Three.js и YouTube API...</div>
+    </div>
+
+    <div id="container">
+        <video id="camera-video" playsinline></video>
+        <canvas id="ar-canvas"></canvas>
+        <div id="youtube-container">
+            <iframe id="youtube-player" 
+                    src="https://www.youtube.com/embed/dQw4w9WgXcQ?enablejsapi=1&controls=0&modestbranding=1&rel=0&showinfo=0&autoplay=1&mute=1&loop=1&playlist=dQw4w9WgXcQ"
+                    frameborder="0" 
+                    allow="autoplay; encrypted-media" 
+                    allowfullscreen>
+            </iframe>
+        </div>
+        <div class="marker-overlay" id="marker-overlay"></div>
+        <div id="debug-info">Ожидание запуска...</div>
+    </div>
+
+    <!-- Загружаем Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r160/three.min.js"></script>
+    <!-- Загружаем YouTube IFrame API -->
+    <script src="https://www.youtube.com/iframe_api"></script>
+    
+    <script>
+        // Ждем полной загрузки всех библиотек
+        let threeLoaded = false;
+        let youtubeLoaded = false;
+        
+        // Проверяем загрузку Three.js
+        if (typeof THREE !== 'undefined') {
+            threeLoaded = true;
+            updateStartButton();
+        } else {
+            // Если Three.js не загрузилась, пробуем альтернативный источник
+            const backupScript = document.createElement('script');
+            backupScript.src = 'https://unpkg.com/three@0.160.0/build/three.min.js';
+            backupScript.onload = function() {
+                threeLoaded = true;
+                updateStartButton();
+            };
+            backupScript.onerror = function() {
+                document.getElementById('load-status').innerHTML = '❌ Не удалось загрузить Three.js';
+            };
+            document.head.appendChild(backupScript);
+        }
+        
+        // YouTube API вызывает эту функцию когда загружен
+        function onYouTubeIframeAPIReady() {
+            youtubeLoaded = true;
+            updateStartButton();
+        }
+        
+        // Обновляем статус кнопки
+        function updateStartButton() {
+            const startButton = document.getElementById('start-button');
+            const loadStatus = document.getElementById('load-status');
+            
+            if (threeLoaded && youtubeLoaded) {
+                startButton.disabled = false;
+                startButton.textContent = "🚀 Запустить AR";
+                loadStatus.innerHTML = "✅ Все библиотеки загружены!";
+            } else {
+                let status = "Загружаем: ";
+                if (!threeLoaded) status += "Three.js ";
+                if (!youtubeLoaded) status += "YouTube API ";
+                loadStatus.innerHTML = status;
+            }
+        }
+        
+        // Запуск приложения, когда все готово
+        document.addEventListener('DOMContentLoaded', function() {
+            const startButton = document.getElementById('start-button');
+            const startScreen = document.getElementById('start-screen');
+            const debugInfo = document.getElementById('debug-info');
+            
+            let arApp = null;
+            
+            startButton.addEventListener('click', async function() {
+                // Финальная проверка что THREE доступна
+                if (typeof THREE === 'undefined') {
+                    debugInfo.innerHTML = "❌ THREE все еще не загружена. Обновите страницу.";
+                    return;
+                }
+                
+                startScreen.classList.add('hidden');
+                debugInfo.innerHTML = "🔄 Инициализация WebAR...";
+                
+                try {
+                    arApp = new YouTubeAR();
+                    await arApp.init();
+                } catch (error) {
+                    debugInfo.innerHTML = `❌ Ошибка инициализации: ${error.message}`;
+                    console.error(error);
+                }
+            });
+        });
+
+        class YouTubeAR {
+            constructor() {
+                this.videoElement = document.getElementById('camera-video');
+                this.canvas = document.getElementById('ar-canvas');
+                this.debugInfo = document.getElementById('debug-info');
+                this.youtubeContainer = document.getElementById('youtube-container');
+                this.youtubePlayer = null;
+                this.markerOverlay = document.getElementById('marker-overlay');
+                
+                this.isTracking = false;
+                this.markerPosition = { x: 0, y: 0, width: 100, height: 100 };
+            }
+            
+            async init() {
+                try {
+                    // 1. Загружаем камеру
+                    await this.startCamera();
+                    this.debugInfo.innerHTML = "✅ Камера запущена<br>🔍 Ищем маркеры...";
+                    
+                    // 2. Инициализируем Three.js для визуализации
+                    this.initThreeJS();
+                    this.debugInfo.innerHTML += "<br>✅ Three.js инициализирован";
+                    
+                    // 3. Инициализируем YouTube плеер
+                    await this.initYouTube();
+                    this.debugInfo.innerHTML += "<br>✅ YouTube плеер готов";
+                    
+                    // 4. Запускаем детектирование маркеров
+                    this.startMarkerDetection();
+                    
+                    this.debugInfo.innerHTML += "<br><br>🎯 <strong>Как использовать:</strong>";
+                    this.debugInfo.innerHTML += "<br>1. 📱 Откройте на телефоне эту страницу";
+                    this.debugInfo.innerHTML += "<br>2. 🔲 Наведите на QR-код/маркер";
+                    this.debugInfo.innerHTML += "<br>3. 🎬 Автоматически запустится рикролл!";
+                    
+                } catch (error) {
+                    this.debugInfo.innerHTML = `❌ Ошибка: ${error.message}`;
+                    console.error(error);
+                    throw error;
+                }
+            }
+            
+            async startCamera() {
+                const constraints = {
+                    video: {
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 },
+                        facingMode: 'environment'
+                    }
+                };
+                
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                this.videoElement.srcObject = stream;
+                
+                return new Promise((resolve) => {
+                    this.videoElement.onloadedmetadata = () => {
+                        this.videoElement.play().then(resolve);
+                    };
+                });
+            }
+            
+            initThreeJS() {
+                // Проверяем что THREE доступна
+                if (typeof THREE === 'undefined') {
+                    throw new Error("THREE не загружена");
+                }
+                
+                // Создаем минимальную Three.js сцену для возможного расширения
+                this.scene = new THREE.Scene();
+                this.camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+                this.renderer = new THREE.WebGLRenderer({ 
+                    canvas: this.canvas,
+                    alpha: true,
+                    antialias: true
+                });
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.setClearColor(0x000000, 0);
+                
+                // Простая анимация для индикации работы
+                this.animate();
+            }
+            
+            initYouTube() {
+                return new Promise((resolve) => {
+                    // YouTube API уже должен быть загружен
+                    if (window.YT && window.YT.Player) {
+                        this.createYouTubePlayer(resolve);
+                    } else {
+                        // Если YouTube API еще не готов, ждем
+                        const checkYouTube = setInterval(() => {
+                            if (window.YT && window.YT.Player) {
+                                clearInterval(checkYouTube);
+                                this.createYouTubePlayer(resolve);
+                            }
+                        }, 100);
+                    }
+                });
+            }
+            
+            createYouTubePlayer(resolve) {
+                this.youtubePlayer = new YT.Player('youtube-player', {
+                    events: {
+                        'onReady': () => {
+                            resolve();
+                        },
+                        'onStateChange': (event) => {
+                            if (event.data === YT.PlayerState.PLAYING) {
+                                this.debugInfo.innerHTML += "<br>🎬 Рикролл запущен!";
+                            }
+                        }
+                    }
+                });
+            }
+            
+            startMarkerDetection() {
+                // Имитация детектирования маркера для демонстрации
+                // Здесь будет OpenCV.js или MindAR!!!!!
+                
+                this.simulateMarkerDetection();
+            }
+            
+            simulateMarkerDetection() {
+                // Симуляция обнаружения маркера
+                let markerVisible = false;
+                let checkCount = 0;
+                
+                const checkMarker = () => {
+                    checkCount++;
+                    
+                    // Симуляция: каждые 3 секунды "находим" маркер
+                    if (checkCount % 60 === 0) { // Примерно каждые 3 секунды при 20fps
+                        if (!markerVisible) {
+                            this.onMarkerFound();
+                            markerVisible = true;
+                        }
+                    } else if (markerVisible && checkCount % 120 === 0) {
+                        this.onMarkerLost();
+                        markerVisible = false;
+                    }
+                    
+                    // Если маркер "виден", обновляем позицию
+                    if (markerVisible) {
+                        this.updateMarkerPosition();
+                    }
+                    
+                    requestAnimationFrame(checkMarker);
+                };
+                
+                checkMarker();
+            }
+            
+            onMarkerFound() {
+                if (!this.isTracking) {
+                    this.isTracking = true;
+                    this.debugInfo.innerHTML += "<br>🎯 Маркер обнаружен! Запускаем рикролл...";
+                    
+                    // Показываем YouTube видео
+                    this.youtubeContainer.style.display = 'block';
+                    this.markerOverlay.style.display = 'block';
+                    
+                    // Запускаем видео
+                    if (this.youtubePlayer && this.youtubePlayer.playVideo) {
+                        this.youtubePlayer.playVideo();
+                    }
+                }
+            }
+            
+            onMarkerLost() {
+                if (this.isTracking) {
+                    this.isTracking = false;
+                    this.debugInfo.innerHTML += "<br>👋 Маркер потерян";
+                    
+                    // Скрываем YouTube видео
+                    this.youtubeContainer.style.display = 'none';
+                    this.markerOverlay.style.display = 'none';
+                    
+                    // Паузим видео
+                    if (this.youtubePlayer && this.youtubePlayer.pauseVideo) {
+                        this.youtubePlayer.pauseVideo();
+                    }
+                }
+            }
+            
+            updateMarkerPosition() {
+                if (!this.isTracking) return;
+                
+                // Здесь будет расчет позиции маркера из компьютерного зрения!!!!
+                // Сейчас просто двигаем маркер по экрану для демонстрации
+                
+                const time = Date.now() * 0.001;
+                const centerX = window.innerWidth / 2 - 50;
+                const centerY = window.innerHeight / 2 - 50;
+                
+                // Легкое движение для демонстрации трекинга
+                const offsetX = Math.sin(time) * 100;
+                const offsetY = Math.cos(time * 0.7) * 50;
+                
+                this.markerPosition.x = centerX + offsetX;
+                this.markerPosition.y = centerY + offsetY;
+                
+                // Обновляем позицию YouTube видео и оверлея
+                this.youtubeContainer.style.left = this.markerPosition.x + 'px';
+                this.youtubeContainer.style.top = this.markerPosition.y + 'px';
+                
+                this.markerOverlay.style.left = this.markerPosition.x + 'px';
+                this.markerOverlay.style.top = this.markerPosition.y + 'px';
+                
+                // Можно добавить масштабирование и вращение на основе позы маркера
+                const scale = 1 + Math.sin(time * 2) * 0.1;
+                this.youtubeContainer.style.transform = `scale(${scale})`;
+            }
+            
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                
+                // Минимальная анимация Three.js сцены
+                if (this.renderer && this.scene && this.camera) {
+                    this.renderer.render(this.scene, this.camera);
+                }
+            }
+        }
+    </script>
+</body>
+</html>

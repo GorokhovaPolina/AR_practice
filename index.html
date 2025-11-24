@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>QR Rickroll AR</title>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        #ar-container { position: relative; }
+        #camera-video { 
+            position: absolute; 
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            object-fit: cover;
+        }
+        #ar-canvas { 
+            position: absolute; 
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+        }
+        .debug { position: fixed; top: 10px; left: 10px; color: white; }
+    </style>
+</head>
+<body>
+    <div id="ar-container">
+        <video id="camera-video" autoplay playsinline></video>
+        <canvas id="ar-canvas"></canvas>
+    </div>
+    <div class="debug" id="debug-info"></div>
+    
+    <script type="module" src="/src/main.js"></script>
+</body>
+</html>
