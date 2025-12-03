@@ -4,34 +4,32 @@
 
 // AR.js marker configuration
 export const MARKER_CONFIG = {
-    // Use Hiro marker for testing (standard AR.js marker)
-    type: 'hiro',  // 'pattern', 'hiro', 'kanji'
+    type: 'hiro', 
     patternUrl: 'https://cdn.rawgit.com/jeromeetienne/AR.js/master/data/data/patt.hiro',
-    // patternUrl: '/pattern-marker.patt',  // Custom pattern file (uncomment when custom marker works)
     
-    // Camera calibration parameters (default for most mobile devices)
+    // camera calibration params
     cameraParametersUrl: 'https://cdn.rawgit.com/jeromeetienne/AR.js/master/data/data/camera_para.dat',
     
-    // Detection settings
-    detectionMode: 'mono',  // 'mono' or 'mono_and_matrix'
-    matrixCodeType: '3x3',  // For matrix codes
+    // detection settings
+    detectionMode: 'mono',
+    matrixCodeType: '3x3',
     canvasWidth: 1280,
     canvasHeight: 720
 };
 
-// Video asset configuration
+// video asset configuration
 export const VIDEO_ASSETS = {
-    // Primary video to display on marker
+    // primary video to display on marker
     primary: {
         name: 'rickroll',
-        url: '/videos/rickroll.mp4',  // Local file in public/videos/
+        url: '/videos/rickroll.mp4',
         loop: true,
         muted: true,
-        autoplay: false,  // Manual control via marker detection
+        autoplay: false,
         volume: 0.5
     },
     
-    // Fallback video if primary fails
+    // fallback video if primary fails
     fallback: {
         name: 'placeholder',
         url: 'https://www.w3schools.com/html/mov_bbb.mp4',
@@ -43,29 +41,29 @@ export const VIDEO_ASSETS = {
 
 // Three.js mesh configuration for video display
 export const MESH_CONFIG = {
-    // Plane geometry for video texture
+    // plane geometry for video texture
     geometry: {
-        width: 1.6,      // 16:9 aspect ratio
+        width: 1.6,
         height: 0.9,
         widthSegments: 1,
         heightSegments: 1
     },
     
-    // Position on marker
+    // position on marker
     position: {
         x: 0,
-        y: 0.45,         // Offset up from marker center
+        y: 0.45, // offset up from marker center
         z: 0
     },
     
-    // Rotation (facing camera)
+    // rotation (facing camera)
     rotation: {
         x: 0,
         y: 0,
         z: 0
     },
     
-    // Scale
+    // scale
     scale: {
         x: 1,
         y: 1,
@@ -73,7 +71,7 @@ export const MESH_CONFIG = {
     }
 };
 
-// Lighting configuration
+// lighting configuration
 export const LIGHTING_CONFIG = {
     ambient: {
         color: 0xffffff,
@@ -86,15 +84,15 @@ export const LIGHTING_CONFIG = {
     }
 };
 
-// Camera configuration
+// camera configuration
 export const CAMERA_CONFIG = {
     fov: 60,
     near: 0.1,
     far: 1000,
-    aspectRatio: 'auto'  // Will be set to window dimensions
+    aspectRatio: 'auto'
 };
 
-// Debug settings
+// debug
 export const DEBUG_CONFIG = {
     showMarkerBounds: false,
     showCameraFrustum: false,

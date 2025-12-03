@@ -1,5 +1,5 @@
-// Multi-marker detector using red pixel clustering
-// Returns up to 4 marker positions detected in the video stream
+// multi-marker detector using red pixel clustering
+// returns up to 4 marker positions detected in the video stream
 export async function initARDetector(videoElement) {
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d');
@@ -10,14 +10,13 @@ export async function initARDetector(videoElement) {
     }
     
     videoElement.addEventListener('loadedmetadata', updateCanvasSize);
-    
-    // Helper: Find red pixel regions and cluster them
+
     function findRedMarkers(imageData, maxMarkers = 4) {
         const data = imageData.data;
         const width = imageData.width;
         const height = imageData.height;
         
-        // Create red pixel map
+        // create red pixel map
         const redMap = new Uint8ClampedArray(width * height);
         for (let i = 0; i < data.length; i += 4) {
             const r = data[i];
@@ -29,20 +28,20 @@ export async function initARDetector(videoElement) {
             }
         }
         
-        // Cluster adjacent red pixels using connected components
+        // cluster adjacent red pixels using connected components
         const visited = new Uint8ClampedArray(width * height);
         const clusters = [];
         
         for (let idx = 0; idx < width * height; idx++) {
             if (redMap[idx] && !visited[idx]) {
                 const cluster = floodFill(idx, width, height, redMap, visited);
-                if (cluster.pixels.length > 20) { // Min cluster size
+                if (cluster.pixels.length > 20) { // min cluster size
                     clusters.push(cluster);
                 }
             }
         }
         
-        // Sort by size and return top maxMarkers
+        // sort by size and return top maxMarkers
         clusters.sort((a, b) => b.pixels.length - a.pixels.length);
         return clusters.slice(0, maxMarkers).map(cluster => ({
             x: cluster.centerX,
@@ -54,7 +53,7 @@ export async function initARDetector(videoElement) {
         }));
     }
     
-    // Helper: Flood fill to find connected red pixel regions
+    // helper: flood fill to find connected red pixel regions
     function floodFill(startIdx, width, height, redMap, visited) {
         const queue = [startIdx];
         const pixels = [];
@@ -72,12 +71,12 @@ export async function initARDetector(videoElement) {
             sumX += x;
             sumY += y;
             
-            // Check 4-connected neighbors
+            // check 4-connected neighbors
             const neighbors = [
-                idx - 1,           // left
-                idx + 1,           // right
-                idx - width,       // top
-                idx + width        // bottom
+                idx - 1,     // left
+                idx + 1,     // right
+                idx - width, // top
+                idx + width  // bottom
             ];
             
             for (const nIdx of neighbors) {
@@ -95,7 +94,7 @@ export async function initARDetector(videoElement) {
     }
     
     return {
-        // Detect returns array of markers or empty array
+        // detect returns array of markers or empty array
         detect: () => {
             if (videoElement.readyState !== videoElement.HAVE_ENOUGH_DATA) {
                 return [];

@@ -3,10 +3,10 @@ import * as THREE from 'three';
 export function createVideoPlane() {
     // Создание видеоэлемента для YouTube рикролла
     const video = document.createElement('video');
-    video.src = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'; // Рикролл
+    video.src = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
     video.crossOrigin = 'anonymous';
     video.loop = true;
-    video.muted = true; // Автоплей требует muted
+    video.muted = true;
     video.playsInline = true;
     
     const videoTexture = new THREE.VideoTexture(video);
@@ -15,7 +15,7 @@ export function createVideoPlane() {
     videoTexture.format = THREE.RGBAFormat;
     
     // Создание плоскости для видео
-    const geometry = new THREE.PlaneGeometry(1.6, 0.9); // 16:9 соотношение
+    const geometry = new THREE.PlaneGeometry(1.6, 0.9);
     const material = new THREE.MeshBasicMaterial({ 
         map: videoTexture,
         transparent: true,

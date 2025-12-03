@@ -115,7 +115,6 @@ export class AssetLoader {
         const config = { ...defaultConfig, ...meshConfig };
         const { geometry, position, rotation, scale } = config;
 
-        // Create plane geometry
         const planeGeo = new THREE.PlaneGeometry(
             geometry.width,
             geometry.height,
@@ -123,25 +122,19 @@ export class AssetLoader {
             geometry.heightSegments
         );
 
-        // Create material with video texture
         const material = new THREE.MeshBasicMaterial({
             map: texture,
             transparent: true,
             side: THREE.DoubleSide
         });
 
-        // Create mesh
         const mesh = new THREE.Mesh(planeGeo, material);
 
-        // Apply transforms
         mesh.position.set(position.x, position.y, position.z);
         mesh.rotation.order = 'XYZ';
         mesh.rotation.set(rotation.x, rotation.y, rotation.z);
         mesh.scale.set(scale.x, scale.y, scale.z);
 
-        // Store reference to video element for playback control
-        // Three.js VideoTexture stores the video in texture.source.data (newer versions)
-        // or directly as the video element (older versions)
         const videoElement = texture.source?.data || texture.image;
         if (videoElement) {
             mesh.userData.videoElement = videoElement;
@@ -150,9 +143,7 @@ export class AssetLoader {
         return mesh;
     }
 
-    /**
-     * Play video on a mesh
-     */
+    // play video on a mesh
     playVideo(mesh) {
         const video = mesh.userData.videoElement;
         if (video && video.paused) {
@@ -160,9 +151,7 @@ export class AssetLoader {
         }
     }
 
-    /**
-     * Pause video on a mesh
-     */
+    // pause video on a mesh
     pauseVideo(mesh) {
         const video = mesh.userData.videoElement;
         if (video && !video.paused) {
@@ -170,9 +159,7 @@ export class AssetLoader {
         }
     }
 
-    /**
-     * Stop and reset video (returns to start)
-     */
+    // stop and reset video (returns to start)
     stopVideo(mesh) {
         const video = mesh.userData.videoElement;
         if (video) {
@@ -181,9 +168,7 @@ export class AssetLoader {
         }
     }
 
-    /**
-     * Set video volume (0.0 to 1.0)
-     */
+    //video volume (0.0 to 1.0)
     setVolume(mesh, volume) {
         const video = mesh.userData.videoElement;
         if (video) {
@@ -191,9 +176,7 @@ export class AssetLoader {
         }
     }
 
-    /**
-     * Clean up and release resources
-     */
+    // clean up and release resources
     dispose(name) {
         const asset = this.loadedAssets.get(name);
         if (asset) {
@@ -208,9 +191,7 @@ export class AssetLoader {
         }
     }
 
-    /**
-     * Clean up all assets
-     */
+    // clean up all assets
     disposeAll() {
         for (const name of this.loadedAssets.keys()) {
             this.dispose(name);

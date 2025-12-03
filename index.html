@@ -2,169 +2,20 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8" />
-  <title>AR.js — video plane</title>
-
+  <title>AR.js Video Player</title>
+  <link rel="stylesheet" href="style.css">
   <script src="https://cdn.jsdelivr.net/npm/three@0.137/build/three.min.js"></script>
   <script src="https://rawcdn.githack.com/AR-js-org/AR.js/master/three.js/build/ar-threex.js"></script>
-
-  <style>
-    body { margin: 0; overflow: hidden; background: black; }
-    #info { position: absolute; top: 10px; left: 10px; color: white; font-family: monospace; z-index: 10; }
-  </style>
 </head>
 <body>
-<div id="info">AR.js video plane</div>
+  <div id="fullscreen-overlay">
+    <div class="fullscreen-message">
+      <h2>AR Video Player</h2>
+      <p>Нажмите для запуска в полноэкранном режиме</p>
+      <button id="enter-fullscreen">Начать AR-сессию</button>
+    </div>
+  </div>
 
-<script>
-const scene = new THREE.Scene();
-const camera = new THREE.Camera();
-scene.add(camera);
-
-const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-renderer.setPixelRatio(window.devicePixelRatio);
-renderer.setSize(window.innerWidth, window.innerHeight);
-document.body.appendChild(renderer.domElement);
-
-const arToolkitSource = new THREEx.ArToolkitSource({ sourceType: 'webcam' });
-
-arToolkitSource.init(() => {
-  arToolkitSource.onResizeElement();
-  arToolkitSource.copyElementSizeTo(renderer.domElement);
-  if (arToolkitContext && arToolkitContext.arController) {
-    arToolkitSource.copyElementSizeTo(arToolkitContext.arController.canvas);
-  }
-  recalcLayout();
-});
-
-window.addEventListener('resize', () => {
-  arToolkitSource.onResizeElement();
-  arToolkitSource.copyElementSizeTo(renderer.domElement);
-  if (arToolkitContext.arController) {
-    arToolkitSource.copyElementSizeTo(arToolkitContext.arController.canvas);
-  }
-  recalcLayout();
-});
-
-const arToolkitContext = new THREEx.ArToolkitContext({
-  cameraParametersUrl: 'https://raw.githubusercontent.com/AR-js-org/AR.js/master/data/data/camera_para.dat',
-  detectionMode: 'mono'
-});
-
-arToolkitContext.init(() => {
-  camera.projectionMatrix.copy(arToolkitContext.getProjectionMatrix());
-});
-
-const markerRoot = new THREE.Group();
-scene.add(markerRoot);
-
-new THREEx.ArMarkerControls(arToolkitContext, markerRoot, {
-  type: 'pattern',
-  patternUrl: 'https://raw.githubusercontent.com/AR-js-org/AR.js/master/data/data/patt.hiro'
-});
-
-const video = document.createElement('video');
-video.src = './public/videos/rickroll.mp4';
-video.crossOrigin = 'anonymous';
-video.loop = true;
-video.muted = true;
-video.playsInline = true;
-video.preload = 'auto';
-video.style.display = 'none';
-document.body.appendChild(video);
-video.play();
-
-const videoTexture = new THREE.VideoTexture(video);
-videoTexture.minFilter = THREE.LinearFilter;
-videoTexture.magFilter = THREE.LinearFilter;
-videoTexture.format = THREE.RGBFormat;
-
-const planeGeo = new THREE.PlaneGeometry(1, 1);
-const planeMat = new THREE.MeshBasicMaterial({ map: videoTexture, side: THREE.DoubleSide });
-const videoPlane = new THREE.Mesh(planeGeo, planeMat);
-
-markerRoot.add(videoPlane);
-videoPlane.rotation.x = THREE.MathUtils.degToRad(-90);
-
-const tmpVec3 = new THREE.Vector3();
-
-function getProjectionF() {
-  const me = camera.projectionMatrix.elements;
-  return me[5] !== 0 ? me[5] : null;
-}
-
-function getFOVrad() {
-  const f = getProjectionF();
-  return f ? 2 * Math.atan(1 / f) : null;
-}
-
-function pixelsToWorldSizeAtDistance(pixelW, pixelH, distance) {
-  const fov = getFOVrad();
-  if (!fov) return { w: 1, h: 1 };
-  const canvasW = renderer.domElement.clientWidth;
-  const canvasH = renderer.domElement.clientHeight;
-  const fullHeight = 2 * distance * Math.tan(fov / 2);
-  const fullWidth = fullHeight * (canvasW / canvasH);
-  return {
-    w: fullWidth * (pixelW / canvasW),
-    h: fullHeight * (pixelH / canvasH)
-  };
-}
-
-function computeFittingPixelRect(maxPixelSide) {
-  const canvasW = renderer.domElement.clientWidth;
-  const canvasH = renderer.domElement.clientHeight;
-
-  let videoW = video.videoWidth || canvasW;
-  let videoH = video.videoHeight || canvasH;
-  const videoAspect = videoW / videoH;
-  const canvasAspect = canvasW / canvasH;
-
-  let pixelW, pixelH;
-
-  if (canvasAspect > videoAspect) {
-    pixelH = Math.min(canvasH, maxPixelSide);
-    pixelW = pixelH * videoAspect;
-  } else {
-    pixelW = Math.min(canvasW, maxPixelSide);
-    pixelH = pixelW / videoAspect;
-  }
-
-  return {
-    pixelW: Math.round(pixelW),
-    pixelH: Math.round(pixelH)
-  };
-}
-
-function recalcLayout() {
-  const rect = computeFittingPixelRect(900);
-
-  videoPlane.getWorldPosition(tmpVec3);
-  const camPos = new THREE.Vector3().setFromMatrixPosition(camera.matrixWorld);
-  let distance = tmpVec3.distanceTo(camPos);
-  if (distance < 0.001) distance = 1.0;
-
-  const world = pixelsToWorldSizeAtDistance(rect.pixelW, rect.pixelH, distance);
-
-  videoPlane.scale.set(world.w, world.h, 1);
-  videoPlane.position.y = world.h / 2 + 0.01;
-}
-
-function animate() {
-  requestAnimationFrame(animate);
-
-  if (arToolkitSource.ready) {
-    arToolkitContext.update(arToolkitSource.domElement);
-  }
-
-  if (video.readyState >= video.HAVE_CURRENT_DATA) {
-    videoTexture.needsUpdate = true;
-  }
-
-  recalcLayout();
-  renderer.render(scene, camera);
-}
-
-animate();
-</script>
+  <script src="app.js"></script>
 </body>
 </html>

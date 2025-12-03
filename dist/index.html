@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AR Rickroll - Marker Detection</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+            background: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #ar-container {
+            width: 100%;
+            height: 100%;
+            max-width: 1280px;
+            max-height: 720px;
+            aspect-ratio: 16 / 9;
+            position: relative;
+            background: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #ar-canvas {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        canvas {
+            display: block;
+        }
+
+        #debug-info {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            color: #0f0;
+            font-family: monospace;
+            font-size: 14px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border: 1px solid #0f0;
+            min-width: 200px;
+            z-index: 100;
+        }
+
+        .status {
+            margin: 5px 0;
+        }
+
+        .marker-found {
+            color: #0f0;
+        }
+
+        .marker-lost {
+            color: #f00;
+        }
+
+        .loading {
+            color: #ff0;
+        }
+    </style>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
+            }
+        }
+    </script>
+  <script type="module" crossorigin src="/assets/index-CI73eqpc.js"></script>
+</head>
+
+<body>
+    <div id="ar-container"></div>
+    <div id="debug-info">
+        <div class="status">Status: <span id="status-text">Initializing...</span></div>
+        <div class="status">FPS: <span id="fps">0</span></div>
+        <div class="status">Marker: <span id="marker-status" class="marker-lost">Not detected</span></div>
+        <div class="status">Video: <span id="video-status">Waiting...</span></div>
+    </div>
+
+    <!-- Three.js для рендеринга видео на маркере -->
+
+
+    <!-- Load Three.js as global (required by AR.js) -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+
+    <!-- AR.js - Loading from CDN with robust error handling -->
+    <script src="https://cdn.jsdelivr.net/npm/ar.js@2.2.2"></script>
+
+    <!-- Логирование подключения -->
+    <script>
+        console.log('📜 HTML loaded, checking for AR.js...');
+
+        // Try to detect what's available
+        window.AR_DEBUG = true;
+
+        // Ждём загрузки скрипта
+        let attempts = 0;
+        const checkScript = setInterval(() => {
+            attempts++;
+
+            const arKeys = Object.keys(window).filter(k =>
+                k.includes('AR') || k.includes('ar') || k.includes('Three') ||
+                k.includes('THREE') || k.includes('three')
+            );
+
+            console.log(`⏳ Check ${attempts}: AR-related keys:`, arKeys);
+            console.log('   window.THREE?', !!window.THREE);
+            console.log('   window.THREEx?', !!window.THREEx);
+            console.log('   window.ARToolkit?', !!window.ARToolkit);
+
+            // Check for common AR.js exports
+            if (window.THREEx || window.ARController || window.ARToolkit) {
+                console.log('✅ AR.js libraries loaded!');
+                console.log('   Available:', {
+                    THREEx: !!window.THREEx,
+                    ARController: !!window.ARController,
+                    ARToolkit: !!window.ARToolkit
+                });
+                clearInterval(checkScript);
+            }
+
+            if (attempts > 20) {
+                console.error('❌ AR.js failed to load after 10 seconds');
+                clearInterval(checkScript);
+            }
+        }, 500);
+    </script>
+
+</body>
+
+</html>

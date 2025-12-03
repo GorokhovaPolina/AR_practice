@@ -124,22 +124,22 @@
         <div id="debug-info">Ожидание запуска...</div>
     </div>
 
-    <!-- Загружаем Three.js -->
+    <!-- загружаем Three.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r160/three.min.js"></script>
-    <!-- Загружаем YouTube IFrame API -->
+    <!-- загружаем YouTube IFrame API -->
     <script src="https://www.youtube.com/iframe_api"></script>
     
     <script>
-        // Ждем полной загрузки всех библиотек
+        // ждем полной загрузки всех библиотек
         let threeLoaded = false;
         let youtubeLoaded = false;
         
-        // Проверяем загрузку Three.js
+        // проверяем загрузку Three.js
         if (typeof THREE !== 'undefined') {
             threeLoaded = true;
             updateStartButton();
         } else {
-            // Если Three.js не загрузилась, пробуем альтернативный источник
+            // если Three.js не загрузилась
             const backupScript = document.createElement('script');
             backupScript.src = 'https://unpkg.com/three@0.160.0/build/three.min.js';
             backupScript.onload = function() {
@@ -152,13 +152,13 @@
             document.head.appendChild(backupScript);
         }
         
-        // YouTube API вызывает эту функцию когда загружен
+        // youtube API вызывает эту функцию когда загружен
         function onYouTubeIframeAPIReady() {
             youtubeLoaded = true;
             updateStartButton();
         }
         
-        // Обновляем статус кнопки
+        // oбновляем статус кнопки
         function updateStartButton() {
             const startButton = document.getElementById('start-button');
             const loadStatus = document.getElementById('load-status');
@@ -175,7 +175,7 @@
             }
         }
         
-        // Запуск приложения, когда все готово
+        // запуск приложения, когда все готово
         document.addEventListener('DOMContentLoaded', function() {
             const startButton = document.getElementById('start-button');
             const startScreen = document.getElementById('start-screen');
@@ -184,7 +184,7 @@
             let arApp = null;
             
             startButton.addEventListener('click', async function() {
-                // Финальная проверка что THREE доступна
+                // финальная проверка что THREE доступна
                 if (typeof THREE === 'undefined') {
                     debugInfo.innerHTML = "❌ THREE все еще не загружена. Обновите страницу.";
                     return;
@@ -218,19 +218,19 @@
             
             async init() {
                 try {
-                    // 1. Загружаем камеру
+                    // 1. загружаем камеру
                     await this.startCamera();
                     this.debugInfo.innerHTML = "✅ Камера запущена<br>🔍 Ищем маркеры...";
                     
-                    // 2. Инициализируем Three.js для визуализации
+                    // 2. инициализируем Three.js для визуализации
                     this.initThreeJS();
                     this.debugInfo.innerHTML += "<br>✅ Three.js инициализирован";
                     
-                    // 3. Инициализируем YouTube плеер
+                    // 3. инициализируем YouTube плеер
                     await this.initYouTube();
                     this.debugInfo.innerHTML += "<br>✅ YouTube плеер готов";
                     
-                    // 4. Запускаем детектирование маркеров
+                    // 4. запускаем детектирование маркеров
                     this.startMarkerDetection();
                     
                     this.debugInfo.innerHTML += "<br><br>🎯 <strong>Как использовать:</strong>";
@@ -265,12 +265,12 @@
             }
             
             initThreeJS() {
-                // Проверяем что THREE доступна
+                // проверяем что THREE доступна
                 if (typeof THREE === 'undefined') {
                     throw new Error("THREE не загружена");
                 }
                 
-                // Создаем минимальную Three.js сцену для возможного расширения
+                // создаем минимальную Three.js сцену для возможного расширения
                 this.scene = new THREE.Scene();
                 this.camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
                 this.renderer = new THREE.WebGLRenderer({ 
@@ -280,8 +280,7 @@
                 });
                 this.renderer.setSize(window.innerWidth, window.innerHeight);
                 this.renderer.setClearColor(0x000000, 0);
-                
-                // Простая анимация для индикации работы
+
                 this.animate();
             }
             
@@ -291,7 +290,7 @@
                     if (window.YT && window.YT.Player) {
                         this.createYouTubePlayer(resolve);
                     } else {
-                        // Если YouTube API еще не готов, ждем
+                        // иначе ждем
                         const checkYouTube = setInterval(() => {
                             if (window.YT && window.YT.Player) {
                                 clearInterval(checkYouTube);
@@ -318,22 +317,20 @@
             }
             
             startMarkerDetection() {
-                // Имитация детектирования маркера для демонстрации
-                // Здесь будет OpenCV.js или MindAR!!!!!
-                
+                // имитация детектирования маркера для демонстрации                
                 this.simulateMarkerDetection();
             }
             
             simulateMarkerDetection() {
-                // Симуляция обнаружения маркера
+                // симуляция обнаружения маркера
                 let markerVisible = false;
                 let checkCount = 0;
                 
                 const checkMarker = () => {
                     checkCount++;
                     
-                    // Симуляция: каждые 3 секунды "находим" маркер
-                    if (checkCount % 60 === 0) { // Примерно каждые 3 секунды при 20fps
+                    // симуляция: каждые 3 секунды "находим" маркер
+                    if (checkCount % 60 === 0) { // примерно каждые 3 секунды при 20fps
                         if (!markerVisible) {
                             this.onMarkerFound();
                             markerVisible = true;
@@ -343,7 +340,7 @@
                         markerVisible = false;
                     }
                     
-                    // Если маркер "виден", обновляем позицию
+                    // если маркер виден, обновляем позицию
                     if (markerVisible) {
                         this.updateMarkerPosition();
                     }
@@ -359,11 +356,11 @@
                     this.isTracking = true;
                     this.debugInfo.innerHTML += "<br>🎯 Маркер обнаружен! Запускаем рикролл...";
                     
-                    // Показываем YouTube видео
+                    // показываем YouTube видео
                     this.youtubeContainer.style.display = 'block';
                     this.markerOverlay.style.display = 'block';
                     
-                    // Запускаем видео
+                    // запускаем видео
                     if (this.youtubePlayer && this.youtubePlayer.playVideo) {
                         this.youtubePlayer.playVideo();
                     }
@@ -375,11 +372,11 @@
                     this.isTracking = false;
                     this.debugInfo.innerHTML += "<br>👋 Маркер потерян";
                     
-                    // Скрываем YouTube видео
+                    // скрываем YouTube видео
                     this.youtubeContainer.style.display = 'none';
                     this.markerOverlay.style.display = 'none';
                     
-                    // Паузим видео
+                    // паузим видео
                     if (this.youtubePlayer && this.youtubePlayer.pauseVideo) {
                         this.youtubePlayer.pauseVideo();
                     }
@@ -388,29 +385,24 @@
             
             updateMarkerPosition() {
                 if (!this.isTracking) return;
-                
-                // Здесь будет расчет позиции маркера из компьютерного зрения!!!!
-                // Сейчас просто двигаем маркер по экрану для демонстрации
-                
+                // просто двигаем маркер по экрану для демонстрации
                 const time = Date.now() * 0.001;
                 const centerX = window.innerWidth / 2 - 50;
                 const centerY = window.innerHeight / 2 - 50;
-                
-                // Легкое движение для демонстрации трекинга
+                // легкое движение для демонстрации трекинга
                 const offsetX = Math.sin(time) * 100;
                 const offsetY = Math.cos(time * 0.7) * 50;
                 
                 this.markerPosition.x = centerX + offsetX;
                 this.markerPosition.y = centerY + offsetY;
                 
-                // Обновляем позицию YouTube видео и оверлея
+                // обновляем позицию YouTube видео и оверлея
                 this.youtubeContainer.style.left = this.markerPosition.x + 'px';
                 this.youtubeContainer.style.top = this.markerPosition.y + 'px';
                 
                 this.markerOverlay.style.left = this.markerPosition.x + 'px';
                 this.markerOverlay.style.top = this.markerPosition.y + 'px';
-                
-                // Можно добавить масштабирование и вращение на основе позы маркера
+
                 const scale = 1 + Math.sin(time * 2) * 0.1;
                 this.youtubeContainer.style.transform = `scale(${scale})`;
             }
@@ -418,7 +410,7 @@
             animate() {
                 requestAnimationFrame(() => this.animate());
                 
-                // Минимальная анимация Three.js сцены
+                // минимальная анимация Three.js сцены
                 if (this.renderer && this.scene && this.camera) {
                     this.renderer.render(this.scene, this.camera);
                 }

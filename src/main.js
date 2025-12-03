@@ -1,11 +1,6 @@
-/**
- * Main AR Application with AR.js integration
- * Detects single marker and renders video content on it
- * 
- * Stack: AR.js 2.2.2 + Three.js (rendering)
- */
+//main AR Application with AR.js integration
+// detects single marker and renders video content on it
 
-// Use global THREE from script tag (will be set by AR.js or loaded separately)
 const THREE = window.THREE || (window.THREEx && window.THREEx.THREE);
 
 import { AssetLoader } from './assetLoader.js';
@@ -19,7 +14,7 @@ class ARApp {
         this.videoStatus = document.getElementById('video-status');
         this.fpsCounter = document.getElementById('fps');
 
-        // Three.js objects
+        // three.js objects
         this.scene = null;
         this.camera = null;
         this.renderer = null;
@@ -27,27 +22,22 @@ class ARApp {
         this.arToolkitContext = null;
         this.markerGroup = null;
 
-        // Asset management
+        // asset management
         this.assetLoader = new AssetLoader();
         this.videoMesh = null;
         this.isMarkerDetected = false;
 
-        // Performance tracking
+        // performance tracking
         this.frameCount = 0;
         this.lastFpsUpdate = Date.now();
-        this.errorLogged = false;  // Flag to suppress repeated error logs
+        this.errorLogged = false;
 
-        // Wait for AR.js to load (it's a global script)
         this.waitForARJS();
     }
 
-    /**
-     * Wait for AR.js library to be available globally
-     */
     async waitForARJS() {
-        // Wait for AR.js to load - we need THREEx, ARController, ARCameraParam, etc.
         let attempts = 0;
-        const maxAttempts = 100; // 5 seconds (100 * 50ms)
+        const maxAttempts = 100;
         
         while (attempts < maxAttempts) {
             const threexLoaded = typeof window.THREEx !== 'undefined';
@@ -61,8 +51,7 @@ class ARApp {
                 console.log('   THREEx:', !!window.THREEx);
                 console.log('   ARController:', !!window.ARController);
                 console.log('   ARCameraParam:', !!window.ARCameraParam);
-                
-                // Make sure THREE is available globally
+
                 if (!window.THREE && window.THREEx && window.THREEx.THREE) {
                     window.THREE = window.THREEx.THREE;
                 }
@@ -90,29 +79,29 @@ class ARApp {
             console.log('🚀 Starting ARApp initialization...');
             this.updateStatus('Initializing AR.js...', 'loading');
             
-            // Initialize Three.js scene
+            // initialize Three.js scene
             console.log('📐 Initializing Three.js scene...');
             this.initThreeJS();
             console.log('✅ Three.js scene initialized');
             
-            // Check camera access before AR.js
+            // check camera access before AR.js
             console.log('📷 Checking camera access...');
             await this.checkCameraAccess();
             console.log('✅ Camera access verified');
             
-            // Initialize AR.js
+            // initialize AR.js
             this.updateStatus('Setting up marker detection...', 'loading');
             console.log('🔍 Initializing AR.js marker detection...');
             await this.initARJS();
             console.log('✅ AR.js initialized successfully');
             
-            // Load video assets
+            // load video assets
             this.updateStatus('Loading video assets...', 'loading');
             console.log('🎬 Loading video assets...');
             await this.loadVideoAssets();
             console.log('✅ Video assets loaded');
             
-            // Start animation loop
+            // start animation loop
             console.log('▶️ Starting animation loop...');
             this.updateStatus('Ready', 'ok');
             this.animate();
@@ -125,21 +114,17 @@ class ARApp {
         }
     }
 
-    /**
-     * Check if camera is accessible before initializing AR.js
-     */
     async checkCameraAccess() {
         try {
             console.log('🔐 Requesting camera permissions...');
-            
-            // Check if getUserMedia is supported
+
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
                 throw new Error('getUserMedia not supported in this browser');
             }
             
             console.log('✅ getUserMedia API available');
             
-            // Request camera access
+            // request camera access
             const constraints = {
                 video: {
                     facingMode: 'environment',
@@ -153,7 +138,7 @@ class ARApp {
             console.log('✅ Camera permission granted!');
             console.log('📊 Stream tracks:', stream.getTracks());
             
-            // Stop all tracks immediately - we just needed to check access
+            // stop all tracks immediately (just need to check access)
             stream.getTracks().forEach(track => {
                 console.log(`⏹️ Stopping track: ${track.kind} (${track.label})`);
                 track.stop();
@@ -172,14 +157,12 @@ class ARApp {
         }
     }
 
-    /**
-     * Initialize Three.js scene, camera, and renderer
-     */
+    // initialize Three.js scene, camera, and renderer
     initThreeJS() {
-        // Scene
+        // scene
         this.scene = new THREE.Scene();
 
-        // Camera
+        // camera
         const width = window.innerWidth;
         const height = window.innerHeight;
         this.camera = new THREE.PerspectiveCamera(
@@ -189,7 +172,7 @@ class ARApp {
             CAMERA_CONFIG.far
         );
 
-        // Renderer
+        // renderer
         this.renderer = new THREE.WebGLRenderer({
             antialias: true,
             alpha: true,
@@ -203,7 +186,7 @@ class ARApp {
         this.renderer.domElement.style.zIndex = '1';
         this.container.appendChild(this.renderer.domElement);
 
-        // Lighting
+        // lighting
         const ambientLight = new THREE.AmbientLight(
             LIGHTING_CONFIG.ambient.color,
             LIGHTING_CONFIG.ambient.intensity
@@ -221,23 +204,20 @@ class ARApp {
         );
         this.scene.add(directionalLight);
 
-        // Create marker group (will be positioned by AR.js)
+        // create marker group
         this.markerGroup = new THREE.Group();
         this.markerGroup.name = 'markerRoot';
         this.scene.add(this.markerGroup);
 
-        // Handle window resize
         window.addEventListener('resize', () => this.onWindowResize());
     }
 
-    /**
-     * Initialize AR.js (marker detection) - AR.js 2.2.2 with THREEx
-     */
+    // initialize AR.js (marker detection)
     async initARJS() {
         try {
             console.log('🔧 Initializing AR.js 2.2.2 with THREEx...');
             
-            // Create canvas element for AR.js
+            // create canvas element for AR.js
             const arCanvas = document.createElement('canvas');
             arCanvas.id = 'arjs-canvas';
             arCanvas.width = MARKER_CONFIG.canvasWidth;
@@ -252,7 +232,7 @@ class ARApp {
             this.container.insertBefore(arCanvas, this.container.firstChild);
             this.arCanvas = arCanvas;
 
-            // Load camera parameters
+            // load camera parameters
             console.log('📷 Loading camera parameters...');
             this.cameraParam = new ARCameraParam(MARKER_CONFIG.cameraParametersUrl);
             
@@ -267,7 +247,7 @@ class ARApp {
                 }, 1000);
             });
 
-            // Create AR controller using THREEx
+            // create AR controller using THREEx
             console.log('🎮 Creating ARController...');
             this.arController = new ARController(
                 arCanvas.width,
@@ -276,7 +256,7 @@ class ARApp {
             );
             console.log('✅ ARController created');
 
-            // Get video stream from camera
+            // get video stream from camera
             console.log('📹 Getting video stream...');
             const constraints = {
                 video: {
@@ -290,7 +270,7 @@ class ARApp {
                 this.videoStream = await navigator.mediaDevices.getUserMedia(constraints);
                 console.log('✅ Video stream acquired');
                 
-                // Create video element and attach stream
+                // create video element and attach stream
                 const videoElement = document.createElement('video');
                 videoElement.setAttribute('autoplay', true);
                 videoElement.setAttribute('playsinline', true);
@@ -319,10 +299,8 @@ class ARApp {
                 console.warn('⚠️ Could not get video stream:', error.message);
             }
 
-            // Load marker pattern
+            // load marker pattern
             console.log(`🎯 Setting up marker detection (${MARKER_CONFIG.type})...`);
-            // For Hiro pattern, AR.js detects it by default
-            // We just need to set up the detection without explicitly loading
             console.log('   ✅ Hiro marker detection enabled');
 
             console.log('🎬 Configuring camera projection...');
@@ -338,23 +316,17 @@ class ARApp {
         }
     }
 
-    /**
-     * Setup marker detection using ARController
-     */
     setupMarkerDetection() {
         console.log('🎯 Marker detection setup complete');
     }
 
-    /**
-     * Load video assets
-     */
     async loadVideoAssets() {
         try {
             console.log('🎥 Loading primary video asset...');
             console.log(`   URL: ${VIDEO_ASSETS.primary.url}`);
             console.log(`   Config:`, VIDEO_ASSETS.primary);
             
-            // Load primary video
+            // load primary video
             const asset = await this.assetLoader.loadVideoTexture(
                 VIDEO_ASSETS.primary.url,
                 VIDEO_ASSETS.primary.name,
@@ -369,7 +341,7 @@ class ARApp {
             console.log('   Texture:', asset.texture);
 
             console.log('🎨 Creating video mesh...');
-            // Create video mesh
+            // create video mesh
             this.videoMesh = this.assetLoader.createVideoMesh(asset.texture, MESH_CONFIG);
             this.videoMesh.visible = false;
             this.markerGroup.add(this.videoMesh);
@@ -387,9 +359,7 @@ class ARApp {
         }
     }
 
-    /**
-     * Marker found - start playing video
-     */
+    // marker found - start playing video
     onMarkerFound() {
         console.log('🎉 ✅ MARKER DETECTED!');
         this.updateMarkerStatus('Detected', 'found');
@@ -405,9 +375,7 @@ class ARApp {
         }
     }
 
-    /**
-     * Marker lost - pause video
-     */
+    // marker lost - pause video
     onMarkerLost() {
         console.log('❌ Marker lost');
         this.updateMarkerStatus('Not detected', 'lost');
@@ -423,45 +391,41 @@ class ARApp {
         }
     }
 
-    /**
-     * Animation loop
-     */
+    // animation loop
     animate = () => {
         requestAnimationFrame(this.animate);
 
         try {
-            // Process AR frame if we have a controller and video
+            // process AR frame if have a controller and video
             if (this.arController && this.videoElement && this.videoElement.readyState === this.videoElement.HAVE_ENOUGH_DATA) {
-                // Draw video frame to canvas for AR processing
+                // draw video frame to canvas for AR processing
                 const ctx = this.arCanvas.getContext('2d');
                 if (ctx) {
                     ctx.drawImage(this.videoElement, 0, 0, this.arCanvas.width, this.arCanvas.height);
                 }
                 
-                // Process the frame for marker detection
+                // process the frame for marker detection
                 this.arController.process(this.arCanvas);
 
-                // Check if any markers are detected
+                // check if any markers are detected
                 const markerCount = this.arController.getMarkerNum();
                 
-                // Debug logging - log every 30 frames
+                // debug logging (log every 30 frames)
                 if (this.frameCount % 30 === 0) {
                     console.log(`📍 Markers detected: ${markerCount}`);
                 }
                 
                 if (markerCount > 0 && this.markerGroup) {
                     try {
-                        // Create output array for transformation matrix
+                        // create output array for transformation matrix
                         const transArray = new Float32Array(16);
                         
-                        // getTransMatSquare(markerIndex, patternWidth, outputMatrix)
-                        // It modifies the outputMatrix in place and returns true/false
                         const success = this.arController.getTransMatSquare(0, 100, transArray);
                         
                         console.log(`   getTransMatSquare success: ${success}`);
                         
                         if (success && transArray.length >= 16) {
-                            // Apply transformation to marker group
+                            // apply transformation to marker group
                             if (!this.markerGroup.matrix) {
                                 this.markerGroup.matrix = new THREE.Matrix4();
                             }
@@ -475,7 +439,7 @@ class ARApp {
                                 this.onMarkerFound();
                             }
                         } else {
-                            // Transform failed
+                            // transform failed
                             if (this.isMarkerDetected) {
                                 this.markerGroup.visible = false;
                                 this.isMarkerDetected = false;
@@ -484,7 +448,7 @@ class ARApp {
                             }
                         }
                     } catch (e) {
-                        // Outer catch for any other errors
+                        // catch for any other errors
                         console.log('   Outer error:', e.message);
                         if (this.isMarkerDetected) {
                             this.markerGroup.visible = false;
@@ -493,7 +457,7 @@ class ARApp {
                         }
                     }
                 } else {
-                    // No markers detected
+                    // no markers detected
                     if (this.markerGroup && this.markerGroup.visible) {
                         this.markerGroup.visible = false;
                         if (this.isMarkerDetected) {
@@ -504,7 +468,7 @@ class ARApp {
                     }
                 }
             } else {
-                // Debug: why can't we process?
+                // debug: why cant we process
                 if (this.frameCount % 60 === 0) {
                     console.log('⚠️ Cannot process frame:', {
                         hasController: !!this.arController,
@@ -515,7 +479,7 @@ class ARApp {
                 }
             }
 
-            // Render scene
+            // render scene
             if (this.renderer) {
                 this.renderer.render(this.scene, this.camera);
             }
@@ -526,13 +490,9 @@ class ARApp {
             }
         }
 
-        // Update FPS
         this.updateFPS();
     }
 
-    /**
-     * Update FPS counter
-     */
     updateFPS() {
         this.frameCount++;
         const now = Date.now();
@@ -546,9 +506,6 @@ class ARApp {
         }
     }
 
-    /**
-     * Handle window resize
-     */
     onWindowResize() {
         const width = window.innerWidth;
         const height = window.innerHeight;
@@ -566,9 +523,6 @@ class ARApp {
         }
     }
 
-    /**
-     * UI Update methods
-     */
     updateStatus(message, status = 'info') {
         this.statusText.textContent = message;
         this.statusText.className = status === 'ok' ? 'marker-found' : 
@@ -585,9 +539,7 @@ class ARApp {
         this.videoStatus.textContent = message;
     }
 
-    /**
-     * Cleanup
-     */
+    // cleanup
     dispose() {
         this.assetLoader.disposeAll();
         if (this.renderer) {
@@ -596,7 +548,7 @@ class ARApp {
     }
 }
 
-// Initialize app when DOM is ready
+// initialize app when DOM is ready
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
         new ARApp();
