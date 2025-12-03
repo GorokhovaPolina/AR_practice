@@ -2,26 +2,20 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8" />
-  <title>AR.js — video plane sync + fixed rotX -90°</title>
+  <title>AR.js — video plane</title>
 
   <script src="https://cdn.jsdelivr.net/npm/three@0.137/build/three.min.js"></script>
   <script src="https://rawcdn.githack.com/AR-js-org/AR.js/master/three.js/build/ar-threex.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.7.7/dat.gui.min.js"></script>
 
   <style>
     body { margin: 0; overflow: hidden; background: black; }
     #info { position: absolute; top: 10px; left: 10px; color: white; font-family: monospace; z-index: 10; }
-    #hint { position: absolute; top: 34px; left: 10px; color: white; font-family: monospace; z-index: 10; opacity: 0.9; }
   </style>
 </head>
 <body>
-  <div id="info">AR.js — video plane sync (rotX fix)</div>
-  <div id="hint">autoRotateFix = true → rotX = -90° при attachToMarker. Отключи для ручной настройки.</div>
+<div id="info">AR.js video plane</div>
 
 <script>
-// --------------------------
-// Scene / Renderer / Camera
-// --------------------------
 const scene = new THREE.Scene();
 const camera = new THREE.Camera();
 scene.add(camera);
@@ -31,15 +25,21 @@ renderer.setPixelRatio(window.devicePixelRatio);
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
-// --------------------------
-// ARToolkit source / context / marker
-// --------------------------
 const arToolkitSource = new THREEx.ArToolkitSource({ sourceType: 'webcam' });
-arToolkitSource.init(() => console.log('arToolkitSource ready'));
+
+arToolkitSource.init(() => {
+  arToolkitSource.onResizeElement();
+  arToolkitSource.copyElementSizeTo(renderer.domElement);
+  if (arToolkitContext && arToolkitContext.arController) {
+    arToolkitSource.copyElementSizeTo(arToolkitContext.arController.canvas);
+  }
+  recalcLayout();
+});
+
 window.addEventListener('resize', () => {
   arToolkitSource.onResizeElement();
   arToolkitSource.copyElementSizeTo(renderer.domElement);
-  if (arToolkitContext.arController !== null) {
+  if (arToolkitContext.arController) {
     arToolkitSource.copyElementSizeTo(arToolkitContext.arController.canvas);
   }
   recalcLayout();
@@ -49,21 +49,19 @@ const arToolkitContext = new THREEx.ArToolkitContext({
   cameraParametersUrl: 'https://raw.githubusercontent.com/AR-js-org/AR.js/master/data/data/camera_para.dat',
   detectionMode: 'mono'
 });
+
 arToolkitContext.init(() => {
   camera.projectionMatrix.copy(arToolkitContext.getProjectionMatrix());
-  console.log('AR context initialized');
 });
 
 const markerRoot = new THREE.Group();
 scene.add(markerRoot);
+
 new THREEx.ArMarkerControls(arToolkitContext, markerRoot, {
   type: 'pattern',
   patternUrl: 'https://raw.githubusercontent.com/AR-js-org/AR.js/master/data/data/patt.hiro'
 });
 
-// --------------------------
-// Video element + texture
-// --------------------------
 const video = document.createElement('video');
 video.src = './public/videos/rickroll.mp4';
 video.crossOrigin = 'anonymous';
@@ -73,69 +71,32 @@ video.playsInline = true;
 video.preload = 'auto';
 video.style.display = 'none';
 document.body.appendChild(video);
-
-video.play().catch(err => {
-  console.warn('autoplay blocked', err);
-});
+video.play();
 
 const videoTexture = new THREE.VideoTexture(video);
 videoTexture.minFilter = THREE.LinearFilter;
 videoTexture.magFilter = THREE.LinearFilter;
 videoTexture.format = THREE.RGBFormat;
 
-// --------------------------
-// Plane (unit 1x1) and defaults
-// --------------------------
 const planeGeo = new THREE.PlaneGeometry(1, 1);
 const planeMat = new THREE.MeshBasicMaterial({ map: videoTexture, side: THREE.DoubleSide });
 const videoPlane = new THREE.Mesh(planeGeo, planeMat);
 
-// default parent: markerRoot
 markerRoot.add(videoPlane);
-videoPlane.position.set(0, 0.5, 0.01);
+videoPlane.rotation.x = THREE.MathUtils.degToRad(-90);
 
-// --------------------------
-// Params + GUI (добавлены rotX/rotY/rotZ)
-// --------------------------
-const params = {
-  mode: 'attachToMarker', // 'attachToMarker' | 'screenAligned'
-  screenDistance: 1.0,
-  maxPixelSize: 900,
-  centerOnScreen: true,
-  autoRotateFix: true,     // если true и mode=attachToMarker => rotX = -90
-  // ручные вращения (в градусах); по умолчанию rotX = -90, как просил
-  rotX: 90,
-  rotY: 0,
-  rotZ: 0,
-};
+const tmpVec3 = new THREE.Vector3();
 
-const gui = new dat.GUI();
-gui.add(params, 'mode', ['attachToMarker', 'screenAligned']).name('Mode').onChange(onModeChange);
-gui.add(params, 'screenDistance', 0.2, 5, 0.01).name('Screen distance').onChange(recalcLayout);
-gui.add(params, 'maxPixelSize', 100, 2000, 1).name('Max pixel side').onChange(recalcLayout);
-gui.add(params, 'centerOnScreen').name('Center on screen').onChange(recalcLayout);
-gui.add(params, 'autoRotateFix').name('Auto-rot fix').onChange(recalcLayout);
-
-const rotFolder = gui.addFolder('Rotation (deg)');
-rotFolder.add(params, 'rotX', -180, 180, 1).name('rotX').onChange(applyRotationFromParams);
-rotFolder.add(params, 'rotY', -180, 180, 1).name('rotY').onChange(applyRotationFromParams);
-rotFolder.add(params, 'rotZ', -180, 180, 1).name('rotZ').onChange(applyRotationFromParams);
-rotFolder.open();
-
-// --------------------------
-// Projection helpers
-// --------------------------
 function getProjectionF() {
   const me = camera.projectionMatrix.elements;
   return me[5] !== 0 ? me[5] : null;
 }
+
 function getFOVrad() {
   const f = getProjectionF();
-  if (!f) return null;
-  return 2 * Math.atan(1 / f);
+  return f ? 2 * Math.atan(1 / f) : null;
 }
 
-// pixels -> world size at distance
 function pixelsToWorldSizeAtDistance(pixelW, pixelH, distance) {
   const fov = getFOVrad();
   if (!fov) return { w: 1, h: 1 };
@@ -143,124 +104,51 @@ function pixelsToWorldSizeAtDistance(pixelW, pixelH, distance) {
   const canvasH = renderer.domElement.clientHeight;
   const fullHeight = 2 * distance * Math.tan(fov / 2);
   const fullWidth = fullHeight * (canvasW / canvasH);
-  const worldH = fullHeight * (pixelH / canvasH);
-  const worldW = fullWidth * (pixelW / canvasW);
-  return { w: worldW, h: worldH };
+  return {
+    w: fullWidth * (pixelW / canvasW),
+    h: fullHeight * (pixelH / canvasH)
+  };
 }
 
-// compute fitting pixel rect (respect video aspect and canvas bounds)
 function computeFittingPixelRect(maxPixelSide) {
   const canvasW = renderer.domElement.clientWidth;
   const canvasH = renderer.domElement.clientHeight;
-  const canvasAspect = canvasW / canvasH;
 
   let videoW = video.videoWidth || canvasW;
   let videoH = video.videoHeight || canvasH;
-  const videoAspect = (videoW && videoH) ? (videoW / videoH) : canvasAspect;
+  const videoAspect = videoW / videoH;
+  const canvasAspect = canvasW / canvasH;
 
   let pixelW, pixelH;
-  if (canvasW / canvasH > videoAspect) {
+
+  if (canvasAspect > videoAspect) {
     pixelH = Math.min(canvasH, maxPixelSide);
     pixelW = pixelH * videoAspect;
-    if (pixelW > canvasW) {
-      pixelW = canvasW;
-      pixelH = pixelW / videoAspect;
-    }
   } else {
     pixelW = Math.min(canvasW, maxPixelSide);
     pixelH = pixelW / videoAspect;
-    if (pixelH > canvasH) {
-      pixelH = canvasH;
-      pixelW = pixelH * videoAspect;
-    }
   }
 
-  return { pixelW: Math.round(pixelW), pixelH: Math.round(pixelH) };
+  return {
+    pixelW: Math.round(pixelW),
+    pixelH: Math.round(pixelH)
+  };
 }
-
-// --------------------------
-// Apply rotation logic
-// --------------------------
-function applyRotationFromParams() {
-  // Если autoRotateFix и в режиме attachToMarker — будем переопределять rotX на -90
-  if (params.mode === 'attachToMarker' && params.autoRotateFix) {
-    videoPlane.rotation.x = THREE.MathUtils.degToRad(-90);
-    videoPlane.rotation.y = THREE.MathUtils.degToRad(params.rotY);
-    videoPlane.rotation.z = THREE.MathUtils.degToRad(params.rotZ);
-    // синхронизируем GUI rotX с фактическим значением (чтобы отобразилось -90)
-    params.rotX = -90;
-    // обновим GUI контрол (чтобы ползунок показал -90)
-    // dat.GUI не имеет прямого метода обновления загрузчика, но изменение value синхронизируется
-    // если контрол ссылается на params.rotX — оно поменялось уже
-  } else {
-    videoPlane.rotation.set(
-      THREE.MathUtils.degToRad(params.rotX),
-      THREE.MathUtils.degToRad(params.rotY),
-      THREE.MathUtils.degToRad(params.rotZ)
-    );
-  }
-}
-
-// --------------------------
-// Main layout recalculation
-// --------------------------
-const tmpVec3 = new THREE.Vector3();
 
 function recalcLayout() {
-  const rect = computeFittingPixelRect(params.maxPixelSize);
+  const rect = computeFittingPixelRect(900);
 
-  let distance;
-  if (params.mode === 'screenAligned') {
-    distance = params.screenDistance;
-  } else {
-    videoPlane.getWorldPosition(tmpVec3);
-    const camPos = new THREE.Vector3().setFromMatrixPosition(camera.matrixWorld);
-    distance = tmpVec3.distanceTo(camPos);
-    if (distance < 1e-3) distance = 1.0;
-  }
+  videoPlane.getWorldPosition(tmpVec3);
+  const camPos = new THREE.Vector3().setFromMatrixPosition(camera.matrixWorld);
+  let distance = tmpVec3.distanceTo(camPos);
+  if (distance < 0.001) distance = 1.0;
 
-  const worldSize = pixelsToWorldSizeAtDistance(rect.pixelW, rect.pixelH, distance);
+  const world = pixelsToWorldSizeAtDistance(rect.pixelW, rect.pixelH, distance);
 
-  // apply scale (geometry 1x1)
-  videoPlane.scale.set(worldSize.w, worldSize.h, 1.0);
-
-  // position & parenting
-  if (params.mode === 'screenAligned') {
-    if (videoPlane.parent !== camera) {
-      videoPlane.parent && videoPlane.parent.remove(videoPlane);
-      camera.add(videoPlane);
-      videoPlane.matrixAutoUpdate = true;
-    }
-    // place in front of camera (local -Z)
-    videoPlane.position.set(0, 0, -params.screenDistance);
-    // keep rotation as requested by params — autoRotateFix not applied in screenAligned mode
-    applyRotationFromParams();
-  } else {
-    if (videoPlane.parent !== markerRoot) {
-      videoPlane.parent && videoPlane.parent.remove(videoPlane);
-      markerRoot.add(videoPlane);
-    }
-    // place bottom edge on marker (y = worldSize.h/2)
-    videoPlane.position.y = worldSize.h / 2 + 0.01;
-    // apply rotation with auto-override if requested
-    applyRotationFromParams();
-  }
+  videoPlane.scale.set(world.w, world.h, 1);
+  videoPlane.position.y = world.h / 2 + 0.01;
 }
 
-// --------------------------
-// Mode change handler
-// --------------------------
-function onModeChange() {
-  // при смене режима применим recalcLayout, который учтёт autoRotateFix
-  recalcLayout();
-}
-
-// initial calc after slight delay so projectionMatrix likely set
-setTimeout(recalcLayout, 200);
-
-// --------------------------
-// Animation / render
-// --------------------------
 function animate() {
   requestAnimationFrame(animate);
 
@@ -272,18 +160,11 @@ function animate() {
     videoTexture.needsUpdate = true;
   }
 
-  // В режиме attachToMarker пересчитываем каждый кадр, чтобы при движении маркера
-  // расстояние/проекция оставались корректными
-  if (params.mode === 'attachToMarker') {
-    recalcLayout();
-  }
-
+  recalcLayout();
   renderer.render(scene, camera);
 }
-animate();
 
-// --------------------------
-console.log('Готово — rotX по умолчанию = -90°. Если autoRotateFix=true и mode=attachToMarker, rotX будет принудительно -90°.');
+animate();
 </script>
 </body>
 </html>
